@@ -1,0 +1,157 @@
+import { useState } from 'react';
+import { User, FileText, ChevronLeft } from 'lucide-react';
+import CompanyJobInputForm from './ResumePreview';
+import PersonalInfoTab from '../components/resume/PersonalInfoTab';
+import EducationTab from '../components/resume/EducationTab';
+import CareerTab from '../components/resume/CareerTab';
+import ProjectsTab from './resume/ProjectsTab';
+import AwardsTab from './resume/AwardsTab';
+import CertificationsTab from './resume/CertificationsTab.tsx';
+
+interface ResumeInfoScreenProps {
+  setCurrentScreen: (screen: string) => void;
+}
+
+const ResumeInfoScreen = ({ setCurrentScreen }: ResumeInfoScreenProps) => {
+  const [activeTab, setActiveTab] = useState('personal');
+  const [showPreview, setShowPreview] = useState(false);
+
+  // 개인정보 상태
+  const [personalInfo, setPersonalInfo] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    blog: '',
+  });
+
+  // 학력 상태
+  const [education, setEducation] = useState([
+    { id: 1, school: '', major: '', period: '', gpa: '' },
+  ]);
+
+  // 경력 상태
+  const [career, setCareer] = useState([
+    { id: 1, company: '', position: '', period: '', description: '' },
+  ]);
+
+  // 프로젝트 상태
+  const [projects, setProjects] = useState([
+    { id: 1, title: '', period: '', description: '', tech: '' },
+  ]);
+
+  // 수상 상태
+  const [awards, setAwards] = useState([{ id: 1, title: '', date: '', organization: '' }]);
+
+  // 자격증 상태
+  const [certifications, setCertifications] = useState([
+    { id: 1, title: '', date: '', organization: '' },
+  ]);
+
+  const tabs = [
+    { id: 'personal', label: '개인정보', icon: User },
+    { id: 'education', label: '학력', icon: FileText },
+    { id: 'career', label: '경력', icon: FileText },
+    { id: 'projects', label: '프로젝트', icon: FileText },
+    { id: 'awards', label: '수상', icon: FileText },
+    { id: 'certifications', label: '자격증', icon: FileText },
+  ];
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 overflow-x-hidden">
+      <header className="bg-white shadow-sm border-b border-orange-100">
+        <div className="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+          <button
+            onClick={() => setCurrentScreen('home')}
+            className="flex items-center space-x-2 text-gray-600 hover:text-gray-800"
+          >
+            <ChevronLeft className="w-5 h-5" />
+            <span>홈으로</span>
+          </button>
+          <h1 className="text-xl font-bold text-gray-800 absolute left-1/2 transform -translate-x-1/2">
+            이력서 정보 관리
+          </h1>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setShowPreview(true)}
+              className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+            >
+              이력서 생성하기
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {showPreview ? (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 p-6 rounded-t-2xl">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-bold text-gray-800">이력서 미리보기</h2>
+                <div className="flex space-x-4">
+                  <button
+                    onClick={() => setShowPreview(false)}
+                    className="px-4 py-2 bg-orange-500 text-white hover:bg-orange-600"
+                  >
+                    닫기
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="p-8">
+              <CompanyJobInputForm />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <main className="max-w-6xl mx-auto px-4 py-8">
+          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+            <div className="p-6">
+              <nav className="flex space-x-2 bg-gray-100 p-1 rounded-xl">
+                {tabs.map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`flex items-center space-x-2 px-4 py-2.5 rounded-lg transition-all duration-200 flex-1 justify-center ${
+                        isActive
+                          ? 'bg-white text-orange-600 shadow-sm'
+                          : 'text-gray-600 hover:text-gray-800 hover:bg-white/50'
+                      }`}
+                    >
+                      <Icon className="w-4 h-4" />
+                      <span className="font-medium text-sm">{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+
+            <div className="p-8">
+              {activeTab === 'personal' && (
+                <PersonalInfoTab personalInfo={personalInfo} setPersonalInfo={setPersonalInfo} />
+              )}
+              {activeTab === 'education' && (
+                <EducationTab education={education} setEducation={setEducation} />
+              )}
+              {activeTab === 'career' && <CareerTab career={career} setCareer={setCareer} />}
+              {activeTab === 'projects' && (
+                <ProjectsTab projects={projects} setProjects={setProjects} />
+              )}
+              {activeTab === 'awards' && <AwardsTab awards={awards} setAwards={setAwards} />}
+              {activeTab === 'certifications' && (
+                <CertificationsTab
+                  certifications={certifications}
+                  setCertifications={setCertifications}
+                />
+              )}
+            </div>
+          </div>
+        </main>
+      )}
+    </div>
+  );
+};
+
+export default ResumeInfoScreen;
