@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import type { FormEvent, ChangeEvent, MouseEvent } from 'react';
 import { FileText, Mail, Check, AlertCircle } from 'lucide-react';
+import { useMutation } from '@apollo/client';
+import { REQUEST_EMAIL_VERIFICATION } from '../auth/graphql/requestEmailVerification.mutation';
 
 interface AuthScreenProps {
   setIsLoggedIn: (value: boolean) => void;
@@ -36,6 +38,8 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ setIsLoggedIn, setCurrentScreen
   };
 
   // 이메일 인증 요청
+  const [requestEmailVerification] = useMutation(REQUEST_EMAIL_VERIFICATION);
+
   const handleEmailVerification = async (): Promise<void> => {
     if (!email) {
       setError('이메일을 입력해주세요.');
@@ -46,11 +50,18 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ setIsLoggedIn, setCurrentScreen
     setError('');
 
     try {
-      // TODO: 이메일 인증 코드 발송 API 호출
-      await new Promise((resolve) => setTimeout(resolve, 1500)); // 임시 지연
-      setEmailSent(true);
-      setShowVerificationInput(true);
+      const { data } = await requestEmailVerification({
+        variables: { email },
+      });
+
+      if (data?.requestEmailVerification) {
+        setEmailSent(true);
+        setShowVerificationInput(true);
+      } else {
+        setError('이메일 발송에 실패했습니다. 다시 시도해주세요.');
+      }
     } catch (err) {
+      console.error('이메일 인증 요청 실패:', err);
       setError('이메일 발송에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setIsLoading(false);
