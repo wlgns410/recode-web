@@ -3,6 +3,10 @@ import type { FormEvent, ChangeEvent, MouseEvent } from 'react';
 import { FileText, Mail, Check, AlertCircle } from 'lucide-react';
 import { useMutation } from '@apollo/client';
 import { REQUEST_EMAIL_VERIFICATION } from '../auth/graphql/requestEmailVerification.mutation';
+import { VERIFY_EMAIL_CODE } from '../auth/graphql/verifyEmailCode.mutation';
+import { SIGN_UP } from '../auth/graphql/signUp.mutation';
+import { ErrorMessage } from '../auth/components/errorMessage';
+import { SIGN_IN } from '../auth/graphql/signIn.mutation'; // 경로 조정 필요
 
 interface AuthScreenProps {
   setIsLoggedIn: (value: boolean) => void;
@@ -39,6 +43,9 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ setIsLoggedIn, setCurrentScreen
 
   // 이메일 인증 요청
   const [requestEmailVerification] = useMutation(REQUEST_EMAIL_VERIFICATION);
+  const [verifyEmailCodeMutation] = useMutation(VERIFY_EMAIL_CODE);
+  const [signUpMutation] = useMutation(SIGN_UP);
+  const [signInMutation] = useMutation(SIGN_IN);
 
   const handleEmailVerification = async (): Promise<void> => {
     if (!email) {
@@ -79,12 +86,22 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ setIsLoggedIn, setCurrentScreen
     setError('');
 
     try {
-      // TODO: 인증 코드 확인 API 호출
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // 임시 지연
-      setIsEmailVerified(true);
-      setShowVerificationInput(false);
+      const { data } = await verifyEmailCodeMutation({
+        variables: {
+          email,
+          code: verificationCode,
+        },
+      });
+
+      if (data?.verifyEmailCode === true) {
+        setIsEmailVerified(true);
+        setShowVerificationInput(false);
+      } else {
+        setError('인증번호가 올바르지 않습니다.');
+      }
     } catch (err) {
-      setError('인증번호가 올바르지 않습니다.');
+      console.error(err);
+      setError('서버 요청에 실패했습니다.');
     } finally {
       setIsLoading(false);
     }
@@ -101,12 +118,28 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ setIsLoggedIn, setCurrentScreen
     setError('');
 
     try {
-      // TODO: 로그인 API 호출
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // 임시 지연
-      setIsLoggedIn(true);
-      setCurrentScreen('home');
+      const { data } = await signInMutation({
+        variables: {
+          input: {
+            email,
+            password,
+          },
+        },
+      });
+
+      if (data?.signIn?.jwt) {
+        // 👇 토큰 저장 (선택)
+        localStorage.setItem('token', data.signIn.jwt);
+
+        // 👇 로그인 상태 업데이트
+        setIsLoggedIn(true);
+        setCurrentScreen('home');
+      } else {
+        setError('로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.');
+      }
     } catch (err) {
-      setError('로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.');
+      console.error(err);
+      setError('서버 오류로 로그인에 실패했습니다.');
     } finally {
       setIsLoading(false);
     }
@@ -133,14 +166,39 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ setIsLoggedIn, setCurrentScreen
     setError('');
 
     try {
-      // TODO: 회원가입 API 호출
-      await new Promise((resolve) => setTimeout(resolve, 1500)); // 임시 지연
-      setIsLoggedIn(true);
-      setCurrentScreen('home');
-      resetForm();
-      setIsLogin(true);
-    } catch (err) {
-      setError('회원가입에 실패했습니다. 다시 시도해주세요.');
+      const { data } = await signUpMutation({
+        variables: {
+          input: {
+            email,
+            username,
+            password,
+            confirmPassword,
+            nickname: '', // 닉네임 없으면 빈 문자열
+            termsAgreed: agreeToTerms,
+          },
+        },
+      });
+
+      if (data?.signUp?.token) {
+        // 로그인 처리
+        setIsLoggedIn(true);
+        setCurrentScreen('home');
+        resetForm();
+        setIsLogin(true);
+      } else {
+        setError('회원가입에 실패했습니다.');
+      }
+    } catch (err: any) {
+      console.error(err);
+
+      const serverMessage =
+        err?.graphQLErrors?.[0]?.message ?? '회원가입에 실패했습니다. 다시 시도해주세요.';
+
+      if (serverMessage.includes('email already exists')) {
+        setError('이미 가입된 이메일입니다.');
+      } else {
+        setError(serverMessage);
+      }
     } finally {
       setIsLoading(false);
     }
