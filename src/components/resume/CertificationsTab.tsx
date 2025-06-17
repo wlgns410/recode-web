@@ -1,5 +1,16 @@
 import { Plus } from 'lucide-react';
+import dayjs from 'dayjs';
 import { type Certification } from '../../types/resume';
+import {
+  useCreateCertificate,
+  useDeleteCertificate,
+} from './graphql/mutations/certification.mutation';
+import { useGetCertificates } from './graphql/queries/certification.query';
+import { useEffect } from 'react';
+import { nanoid } from 'nanoid';
+import { type CertificateType } from './constants/certificate.enum';
+
+const currentTabType: CertificateType = 'LICENSE';
 
 interface CertificationsTabProps {
   certifications: Certification[];
@@ -8,22 +19,95 @@ interface CertificationsTabProps {
 
 const CertificationsTab = ({ certifications, setCertifications }: CertificationsTabProps) => {
   const addCertification = () => {
-    const newId = certifications.length > 0 ? Math.max(...certifications.map((c) => c.id)) + 1 : 1;
+    const newId = nanoid(); // string 형태의 고유 ID 생성
     setCertifications([...certifications, { id: newId, title: '', date: '', organization: '' }]);
   };
 
-  const removeCertification = (id: number) => {
-    if (certifications.length > 1) {
-      const newCertifications = certifications.filter((item) => item.id !== id);
-      setCertifications(newCertifications);
-    }
-  };
-
-  const updateCertification = (id: number, field: string, value: string) => {
+  const updateCertification = (id: string, field: string, value: string) => {
     const newCertifications = certifications.map((item) =>
       item.id === id ? { ...item, [field]: value } : item
     );
     setCertifications(newCertifications);
+  };
+
+  const { data, refetch } = useGetCertificates(currentTabType);
+
+  useEffect(() => {
+    if (data) {
+      setCertifications(
+        data.getCertificates
+          .filter((cert) => cert.type === currentTabType)
+          .map((cert) => ({
+            id: cert.id,
+            title: cert.name,
+            date: cert.issuedDate,
+            organization: cert.issuer ?? '',
+          }))
+      );
+    }
+  }, [data, currentTabType]);
+
+  const [createCertificate] = useCreateCertificate();
+  const [deleteCertificate] = useDeleteCertificate();
+
+  const handleDeleteCertificate = async (id: string) => {
+    try {
+      await deleteCertificate({
+        variables: { id },
+      });
+
+      setCertifications((prev) => prev.filter((cert) => cert.id !== id));
+      alert('자격증이 삭제되었습니다.');
+    } catch (err) {
+      console.error('자격증 삭제 오류:', err);
+      alert('자격증 삭제에 실패했습니다.');
+    }
+  };
+
+  const handleSave = async () => {
+    try {
+      const { data } = await refetch();
+
+      // 이건 서버에 있는 자격증 목록
+      const existingCerts = data?.getCertificates ?? [];
+
+      for (const cert of existingCerts) {
+        await deleteCertificate({ variables: { id: cert.id } });
+      }
+
+      for (const cert of certifications) {
+        if (!cert.title || !cert.date) continue;
+
+        await createCertificate({
+          variables: {
+            input: {
+              name: cert.title,
+              issuedDate: dayjs(cert.date).toISOString(),
+              issuer: cert.organization,
+              type: currentTabType,
+            },
+          },
+        });
+      }
+
+      // 💡 서버 저장 후 최신 데이터로 갱신을 강제
+      const newData = await refetch();
+      if (newData.data) {
+        setCertifications(
+          newData.data.getCertificates.map((cert) => ({
+            id: cert.id,
+            title: cert.name,
+            date: cert.issuedDate,
+            organization: cert.issuer ?? '',
+          }))
+        );
+      }
+
+      alert('자격증이 저장되었습니다!');
+    } catch (err) {
+      console.error(err);
+      alert('저장에 실패했습니다.');
+    }
   };
 
   return (
@@ -38,7 +122,10 @@ const CertificationsTab = ({ certifications, setCertifications }: Certifications
             <Plus className="w-5 h-5" />
             <span>추가</span>
           </button>
-          <button className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors">
+          <button
+            onClick={handleSave}
+            className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+          >
             저장
           </button>
         </div>
@@ -50,7 +137,7 @@ const CertificationsTab = ({ certifications, setCertifications }: Certifications
               <h3 className="text-lg font-semibold text-gray-700">자격증 {index + 1}</h3>
               {certifications.length > 1 && (
                 <button
-                  onClick={() => removeCertification(item.id)}
+                  onClick={() => handleDeleteCertificate(item.id)}
                   className="text-red-500 hover:text-red-600 text-sm"
                 >
                   삭제

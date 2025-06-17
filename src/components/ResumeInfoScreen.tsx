@@ -1,12 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { User, FileText, ChevronLeft } from 'lucide-react';
 import CompanyJobInputForm from './ResumePreview';
 import PersonalInfoTab from '../components/resume/PersonalInfoTab';
 import EducationTab from '../components/resume/EducationTab';
 import CareerTab from '../components/resume/CareerTab';
-import ProjectsTab from './resume/ProjectsTab';
+import ProjectsTab, { type ProjectForm } from './resume/ProjectsTab';
 import AwardsTab from './resume/AwardsTab';
 import CertificationsTab from './resume/CertificationsTab.tsx';
+import { useGetCertificates } from './resume/graphql/queries/certification.query';
+import { useGetCareers } from './resume/graphql/queries/career.query.ts';
+import { useGetEducations } from './resume/graphql/queries/education.query';
+import { useGetUserProfile } from './resume/graphql/queries/profile.query';
+import { useGetProjects } from './resume/graphql/queries/project.query.ts';
 
 interface ResumeInfoScreenProps {
   setCurrentScreen: (screen: string) => void;
@@ -15,6 +20,14 @@ interface ResumeInfoScreenProps {
 const ResumeInfoScreen = ({ setCurrentScreen }: ResumeInfoScreenProps) => {
   const [activeTab, setActiveTab] = useState('personal');
   const [showPreview, setShowPreview] = useState(false);
+
+  // GraphQL 쿼리들
+  const { data: profileData } = useGetUserProfile();
+  const { data: educationsData } = useGetEducations();
+  const { data: careersData } = useGetCareers();
+  const { data: projectsData } = useGetProjects();
+  const { data: certificationsData } = useGetCertificates('LICENSE');
+  const { data: awardsData } = useGetCertificates('AWARD');
 
   // 개인정보 상태
   const [personalInfo, setPersonalInfo] = useState({
@@ -25,27 +38,134 @@ const ResumeInfoScreen = ({ setCurrentScreen }: ResumeInfoScreenProps) => {
   });
 
   // 학력 상태
-  const [education, setEducation] = useState([
-    { id: 1, school: '', major: '', period: '', gpa: '' },
+  const [educations, setEducations] = useState([
+    { id: '1', school: '', major: '', period: '', gpa: '' },
   ]);
 
   // 경력 상태
-  const [career, setCareer] = useState([
-    { id: 1, company: '', position: '', period: '', description: '' },
+  const [careers, setCareers] = useState([
+    { id: '1', companyName: '', position: '', industry: '', period: '', summary: '' },
   ]);
 
   // 프로젝트 상태
-  const [projects, setProjects] = useState([
-    { id: 1, title: '', period: '', description: '', tech: '' },
+  const [projects, setProjects] = useState<ProjectForm[]>([
+    {
+      id: '1',
+      name: '',
+      description: '',
+      period: '',
+      techStack: '',
+      type: 'PERSONAL',
+      responsibility: '',
+    },
   ]);
 
   // 수상 상태
-  const [awards, setAwards] = useState([{ id: 1, title: '', date: '', organization: '' }]);
+  const [awards, setAwards] = useState([{ id: '1', title: '', date: '', organization: '' }]);
 
   // 자격증 상태
   const [certifications, setCertifications] = useState([
-    { id: 1, title: '', date: '', organization: '' },
+    { id: '1', title: '', date: '', organization: '' },
   ]);
+
+  // 데이터 로드 시 상태 업데이트
+  useEffect(() => {
+    if (profileData?.getMyUserProfile) {
+      const profile = profileData.getMyUserProfile;
+      setPersonalInfo({
+        name: profile.name || '',
+        email: profile.email || '',
+        phone: profile.phone || '',
+        blog: profile.blog || '',
+      });
+    }
+  }, [profileData]);
+
+  useEffect(() => {
+    if (educationsData?.getEducations) {
+      const educationsList = educationsData.getEducations;
+      if (educationsList && educationsList.length > 0) {
+        setEducations(
+          educationsList.map((edu: any) => ({
+            id: edu.id || '',
+            school: edu.school || '',
+            major: edu.major || '',
+            period: edu.period || '',
+            gpa: edu.gpa || '',
+          }))
+        );
+      }
+    }
+  }, [educationsData]);
+
+  useEffect(() => {
+    if (careersData?.getMyCareers) {
+      const careersList = careersData.getMyCareers;
+      if (careersList && careersList.length > 0) {
+        setCareers(
+          careersList.map((career: any) => ({
+            id: career.id || '',
+            companyName: career.companyName || '',
+            position: career.position || '',
+            industry: career.industry || '',
+            period: career.period || '',
+            summary: career.summary || '',
+          }))
+        );
+      }
+    }
+  }, [careersData]);
+
+  useEffect(() => {
+    if (projectsData?.getMyProjects) {
+      const projectsList = projectsData.getMyProjects;
+      if (projectsList && projectsList.length > 0) {
+        setProjects(
+          projectsList.map((project: any) => ({
+            id: project.id || '',
+            name: project.name || '',
+            description: project.description || '',
+            period: project.period || '',
+            techStack: project.techStack || '',
+            type: project.type || 'PERSONAL',
+            responsibility: project.responsibility || '',
+          }))
+        );
+      }
+    }
+  }, [projectsData]);
+
+  useEffect(() => {
+    if (certificationsData?.getCertificates) {
+      const certificationsList = certificationsData.getCertificates;
+      if (certificationsList && certificationsList.length > 0) {
+        setCertifications(
+          certificationsList.map((cert: any) => ({
+            id: cert.id || '',
+            title: cert.name || '',
+            date: cert.issuedDate || '',
+            organization: cert.issuer || '',
+          }))
+        );
+      }
+    }
+  }, [certificationsData]);
+
+  useEffect(() => {
+    if (awardsData?.getCertificates) {
+      const awardsList = awardsData.getCertificates;
+      if (awardsList && awardsList.length > 0) {
+        setAwards(
+          awardsList.map((award: any) => ({
+            id: award.id || '',
+            title: award.name || '',
+            date: award.issuedDate || '',
+            organization: award.issuer || '',
+          }))
+        );
+      }
+    }
+  }, [awardsData]);
 
   const tabs = [
     { id: 'personal', label: '개인정보', icon: User },
@@ -98,7 +218,14 @@ const ResumeInfoScreen = ({ setCurrentScreen }: ResumeInfoScreenProps) => {
               </div>
             </div>
             <div className="p-8">
-              <CompanyJobInputForm />
+              <CompanyJobInputForm
+                personalInfo={personalInfo}
+                educations={educations}
+                careers={careers}
+                projects={projects}
+                awards={awards}
+                certifications={certifications}
+              />
             </div>
           </div>
         </div>
@@ -133,9 +260,9 @@ const ResumeInfoScreen = ({ setCurrentScreen }: ResumeInfoScreenProps) => {
                 <PersonalInfoTab personalInfo={personalInfo} setPersonalInfo={setPersonalInfo} />
               )}
               {activeTab === 'education' && (
-                <EducationTab education={education} setEducation={setEducation} />
+                <EducationTab educations={educations} setEducations={setEducations} />
               )}
-              {activeTab === 'career' && <CareerTab career={career} setCareer={setCareer} />}
+              {activeTab === 'career' && <CareerTab careers={careers} setCareers={setCareers} />}
               {activeTab === 'projects' && (
                 <ProjectsTab projects={projects} setProjects={setProjects} />
               )}

@@ -1,0 +1,71 @@
+// 산업 분야
+export const INDUSTRY_TYPES = [
+  'AUTOMOTIVE',
+  'CONSTRUCTION',
+  'CONSULTING',
+  'EDUCATION',
+  'ENERGY',
+  'ENTERTAINMENT',
+  'FINANCE',
+  'GOVERNMENT',
+  'HEALTHCARE',
+  'IT',
+  'LOGISTICS',
+  'MANUFACTURING',
+  'OTHER',
+  'RETAIL',
+  'TELECOM',
+] as const;
+
+export const INDUSTRY_LABELS: Record<(typeof INDUSTRY_TYPES)[number], string> = {
+  AUTOMOTIVE: '자동차',
+  CONSTRUCTION: '건설',
+  CONSULTING: '컨설팅',
+  EDUCATION: '교육',
+  ENERGY: '에너지',
+  ENTERTAINMENT: '엔터테인먼트',
+  FINANCE: '금융',
+  GOVERNMENT: '공공기관',
+  HEALTHCARE: '헬스케어',
+  IT: 'IT',
+  LOGISTICS: '물류',
+  MANUFACTURING: '제조',
+  OTHER: '기타',
+  RETAIL: '소매',
+  TELECOM: '통신',
+};
+
+// 직무 분야
+export const WORK_AREAS = [
+  'AI_ML',
+  'BACKEND',
+  'DATA',
+  'DESIGN',
+  'DEVOPS',
+  'ETC',
+  'FRONTEND',
+  'FULLSTACK',
+  'INFRA',
+  'MOBILE',
+  'PM',
+  'PO',
+  'QA',
+  'SECURITY',
+] as const;
+
+export const WORK_AREA_LABELS: Record<(typeof WORK_AREAS)[number], string> = {
+  AI_ML: 'AI/머신러닝',
+  BACKEND: '백엔드',
+  DATA: '데이터',
+  DESIGN: '디자인',
+  DEVOPS: 'DevOps',
+  ETC: '기타',
+  FRONTEND: '프론트엔드',
+  FULLSTACK: '풀스택',
+  INFRA: '인프라',
+  MOBILE: '모바일',
+  PM: '프로덕트 매니저',
+  PO: '프로덕트 오너',
+  QA: '품질관리',
+  SECURITY: '보안',
+};

@@ -1,27 +1,108 @@
 import { Plus } from 'lucide-react';
-import { type Award } from '../../types/resume';
+import dayjs from 'dayjs';
+import { type Certification } from '../../types/resume';
+import {
+  useCreateCertificate,
+  useDeleteCertificate,
+} from './graphql/mutations/certification.mutation';
+import { useGetCertificates } from './graphql/queries/certification.query';
+import { useEffect } from 'react';
+import { nanoid } from 'nanoid';
+import { type CertificateType } from './constants/certificate.enum';
+
+const currentTabType: CertificateType = 'AWARD';
 
 interface AwardsTabProps {
-  awards: Award[];
-  setAwards: React.Dispatch<React.SetStateAction<Award[]>>;
+  awards: Certification[];
+  setAwards: React.Dispatch<React.SetStateAction<Certification[]>>;
 }
 
 const AwardsTab = ({ awards, setAwards }: AwardsTabProps) => {
   const addAward = () => {
-    const newId = awards.length > 0 ? Math.max(...awards.map((a) => a.id)) + 1 : 1;
+    const newId = nanoid();
     setAwards([...awards, { id: newId, title: '', date: '', organization: '' }]);
   };
 
-  const removeAward = (id: number) => {
-    if (awards.length > 1) {
-      const newAwards = awards.filter((item) => item.id !== id);
-      setAwards(newAwards);
+  const updateAward = (id: string, field: string, value: string) => {
+    const newAwards = awards.map((item) => (item.id === id ? { ...item, [field]: value } : item));
+    setAwards(newAwards);
+  };
+
+  const { data, refetch } = useGetCertificates(currentTabType);
+
+  useEffect(() => {
+    if (data) {
+      setAwards(
+        data.getCertificates.map((cert) => ({
+          id: cert.id,
+          title: cert.name,
+          date: cert.issuedDate,
+          organization: cert.issuer ?? '',
+        }))
+      );
+    }
+  }, [data, currentTabType]);
+
+  const [createCertificate] = useCreateCertificate();
+  const [deleteCertificate] = useDeleteCertificate();
+
+  const handleDeleteCertificate = async (id: string) => {
+    try {
+      await deleteCertificate({
+        variables: { id },
+      });
+
+      setAwards((prev) => prev.filter((cert) => cert.id !== id));
+      alert('수상 내역이 삭제되었습니다.');
+    } catch (err) {
+      console.error('수상 내역 삭제 오류:', err);
+      alert('수상 내역 삭제에 실패했습니다.');
     }
   };
 
-  const updateAward = (id: number, field: string, value: string) => {
-    const newAwards = awards.map((item) => (item.id === id ? { ...item, [field]: value } : item));
-    setAwards(newAwards);
+  const handleSave = async () => {
+    try {
+      const { data } = await refetch();
+
+      // 이건 서버에 있는 자격증 목록
+      const existingCerts = data?.getCertificates ?? [];
+
+      for (const cert of existingCerts) {
+        await deleteCertificate({ variables: { id: cert.id } });
+      }
+
+      for (const cert of awards) {
+        if (!cert.title || !cert.date) continue;
+
+        await createCertificate({
+          variables: {
+            input: {
+              name: cert.title,
+              issuedDate: dayjs(cert.date).toISOString(),
+              issuer: cert.organization,
+              type: currentTabType,
+            },
+          },
+        });
+      }
+      // 💡 서버 저장 후 최신 데이터로 갱신을 강제
+      const newData = await refetch();
+      if (newData.data) {
+        setAwards(
+          newData.data.getCertificates.map((cert) => ({
+            id: cert.id,
+            title: cert.name,
+            date: cert.issuedDate,
+            organization: cert.issuer ?? '',
+          }))
+        );
+      }
+
+      alert('자격증이 저장되었습니다!');
+    } catch (err) {
+      console.error(err);
+      alert('저장에 실패했습니다.');
+    }
   };
 
   return (
@@ -36,7 +117,10 @@ const AwardsTab = ({ awards, setAwards }: AwardsTabProps) => {
             <Plus className="w-5 h-5" />
             <span>추가</span>
           </button>
-          <button className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors">
+          <button
+            onClick={handleSave}
+            className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+          >
             저장
           </button>
         </div>
@@ -48,7 +132,7 @@ const AwardsTab = ({ awards, setAwards }: AwardsTabProps) => {
               <h3 className="text-lg font-semibold text-gray-700">수상 내역 {index + 1}</h3>
               {awards.length > 1 && (
                 <button
-                  onClick={() => removeAward(item.id)}
+                  onClick={() => handleDeleteCertificate(item.id)}
                   className="text-red-500 hover:text-red-600 text-sm"
                 >
                   삭제
