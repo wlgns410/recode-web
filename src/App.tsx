@@ -1,6 +1,6 @@
 import './index.css';
 import { useState } from 'react';
-import AuthScreen from './components/AuthScreen';
+import AuthScreen from './components/authScreen';
 import HomeScreen from './components/HomeScreen';
 import CalendarScreen from './components/CalendarScreen';
 import ResumeInfoScreen from './components/ResumeInfoScreen';
@@ -48,18 +48,7 @@ const ResumeLog = () => {
       {currentScreen === 'auth' && (
         <AuthScreen setIsLoggedIn={setIsLoggedIn} setCurrentScreen={setCurrentScreen} />
       )}
-      {currentScreen === 'calendar' && (
-        <CalendarScreen
-          currentDate={currentDate}
-          setCurrentDate={setCurrentDate}
-          selectedDate={selectedDate}
-          setSelectedDate={setSelectedDate}
-          setCurrentScreen={setCurrentScreen}
-          records={records}
-          formatDate={formatDate}
-          hasRecordOnDate={hasRecordOnDate}
-        />
-      )}
+      {currentScreen === 'calendar' && <CalendarScreen setCurrentScreen={setCurrentScreen} />}
       {currentScreen === 'resume-info' && <ResumeInfoScreen setCurrentScreen={setCurrentScreen} />}
     </div>
   );

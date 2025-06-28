@@ -5,8 +5,7 @@ import { useMutation } from '@apollo/client';
 import { REQUEST_EMAIL_VERIFICATION } from '../auth/graphql/requestEmailVerification.mutation';
 import { VERIFY_EMAIL_CODE } from '../auth/graphql/verifyEmailCode.mutation';
 import { SIGN_UP } from '../auth/graphql/signUp.mutation';
-import { ErrorMessage } from '../auth/components/errorMessage';
-import { SIGN_IN } from '../auth/graphql/signIn.mutation'; // 경로 조정 필요
+import { SIGN_IN } from '../auth/graphql/signIn.mutation';
 
 interface AuthScreenProps {
   setIsLoggedIn: (value: boolean) => void;

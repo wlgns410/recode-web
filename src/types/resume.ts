@@ -15,7 +15,7 @@ export interface PersonalInfo {
 }
 
 export interface Education {
-  id: number;
+  id: string;
   school: string;
   major: string;
   period: string;
@@ -23,7 +23,7 @@ export interface Education {
 }
 
 export interface Career {
-  id: number;
+  id: string;
   company: string;
   position: string;
   period: string;
@@ -31,7 +31,7 @@ export interface Career {
 }
 
 export interface Project {
-  id: number;
+  id: string;
   title: string;
   period: string;
   description: string;
@@ -39,15 +39,16 @@ export interface Project {
 }
 
 export interface Award {
-  id: number;
+  id: string;
   title: string;
   date: string;
   organization: string;
 }
 
 export interface Certification {
-  id: number;
+  id: string;
   title: string;
   date: string;
   organization: string;
+  // type:
 }

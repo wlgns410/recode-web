@@ -8,9 +8,57 @@ import {
   Phone,
   MapPin,
   User,
+  Trophy,
 } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
+import type { ProjectForm } from './resume/ProjectsTab';
 
-const CompanyJobInputForm = () => {
+interface ResumePreviewProps {
+  personalInfo: {
+    name: string;
+    email: string;
+    phone: string;
+    blog: string;
+  };
+  educations: Array<{
+    id: string;
+    school: string;
+    major: string;
+    period: string;
+    gpa: string;
+  }>;
+  careers: Array<{
+    id: string;
+    companyName: string;
+    position: string;
+    industry: string;
+    period: string;
+    summary: string;
+  }>;
+  projects: ProjectForm[];
+  awards: Array<{
+    id: string;
+    title: string;
+    date: string;
+    organization: string;
+  }>;
+  certifications: Array<{
+    id: string;
+    title: string;
+    date: string;
+    organization: string;
+  }>;
+}
+
+const CompanyJobInputForm = ({
+  personalInfo,
+  educations,
+  careers,
+  projects,
+  awards,
+  certifications,
+}: ResumePreviewProps) => {
   const [companyName, setCompanyName] = useState('');
   const [jobTitle, setJobTitle] = useState('');
   const [showStyles, setShowStyles] = useState(false);
@@ -31,60 +79,91 @@ const CompanyJobInputForm = () => {
     },
     {
       id: 'creative',
-      name: '크리에이티브 스타일',
+      name: '창의적 스타일',
       description: '창의적이고 독특한 디자인',
       preview: '🎨',
     },
   ];
 
-  // 샘플 이력서 데이터
-  const sampleResumeData = {
+  // 실제 이력서 데이터 사용
+  const resumeData = {
     personalInfo: {
-      name: '홍길동',
-      email: 'hong@example.com',
-      phone: '010-1234-5678',
-      address: '서울시 강남구',
+      name: personalInfo.name || '홍길동',
+      email: personalInfo.email || 'hong@example.com',
+      phone: personalInfo.phone || '010-1234-5678',
+      address: personalInfo.blog || '서울시 강남구',
       birth: '1990.01.01',
     },
     summary: `${jobTitle} 포지션에 지원하는 ${companyName}에 적합한 전문가입니다. 다양한 프로젝트 경험을 바탕으로 창의적인 문제 해결 능력과 팀워크를 발휘할 수 있습니다.`,
-    experience: [
-      {
-        company: '이전 회사',
-        position: '선임 개발자',
-        period: '2020.03 - 2024.02',
-        description: [
-          `${jobTitle} 관련 프로젝트 5건 이상 리드`,
-          '팀 생산성 30% 향상에 기여',
-          '신기술 도입으로 업무 효율성 개선',
-        ],
-      },
-      {
-        company: '스타트업',
-        position: '주니어 개발자',
-        period: '2018.03 - 2020.02',
-        description: [
-          '웹 애플리케이션 개발 및 유지보수',
-          '고객 만족도 95% 이상 달성',
-          '애자일 방법론을 활용한 프로젝트 관리',
-        ],
-      },
-    ],
-    education: [
-      {
-        school: '○○대학교',
-        major: '컴퓨터공학과',
-        period: '2014.03 - 2018.02',
-        grade: '3.8/4.5',
-      },
-    ],
-    skills: ['JavaScript', 'React', 'Node.js', 'Python', 'AWS', '팀워크', '문제해결', '의사소통'],
-    projects: [
-      {
-        name: `${companyName} 스타일 프로젝트`,
-        period: '2023.06 - 2023.12',
-        description: `${jobTitle} 역할로 참여한 대규모 프로젝트로, 사용자 경험 개선에 중점을 둔 혁신적인 솔루션 개발`,
-      },
-    ],
+    experience: careers
+      .filter((career) => career.companyName || career.position)
+      .map((career) => ({
+        company: career.companyName || '회사명 없음',
+        position: career.position || '직책 없음',
+        period: career.period || '',
+        description: career.summary ? [career.summary] : ['주요 업무 수행'],
+      })),
+    education: educations
+      .filter((edu) => edu.school || edu.major)
+      .map((edu) => ({
+        school: edu.school || '학교명 없음',
+        major: edu.major || '전공 없음',
+        period: edu.period || '',
+        grade: edu.gpa || '',
+      })),
+    projects: projects
+      .filter((project) => project.name && project.description)
+      .map((project) => ({
+        name: project.name,
+        period: project.period,
+        description: project.description,
+      })),
+    awards: awards
+      .filter((award) => award.title)
+      .map((award) => ({
+        name: award.title,
+        issuer: award.organization,
+        date: award.date,
+      })),
+    certifications: certifications
+      .filter((cert) => cert.title)
+      .map((cert) => ({
+        name: cert.title,
+        issuer: cert.organization,
+        date: cert.date,
+      })),
+  };
+
+  const downloadPDF = async () => {
+    const element = document.getElementById('resume-content');
+
+    if (!element) {
+      alert('이력서 내용을 찾을 수 없습니다.');
+      return;
+    }
+
+    try {
+      const canvas = await html2canvas(element, {
+        scale: 1, // 스케일을 1로 줄임
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: true,
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const imgWidth = 210;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+
+      const fileName = `${resumeData.personalInfo.name}_이력서.pdf`;
+
+      pdf.save(fileName);
+    } catch (error) {
+      alert('PDF 생성 중 오류가 발생했습니다: ' + (error as Error).message);
+    }
   };
 
   const handleNext = () => {
@@ -98,27 +177,23 @@ const CompanyJobInputForm = () => {
   };
 
   const renderModernResume = () => (
-    <div className="bg-white p-8 max-w-4xl mx-auto">
+    <div id="resume-content" className="bg-white p-8 max-w-4xl mx-auto">
       {/* 헤더 */}
       <div className="border-b-4 border-blue-600 pb-6 mb-6">
-        <h1 className="text-4xl font-bold text-gray-800 mb-2">
-          {sampleResumeData.personalInfo.name}
-        </h1>
-        <p className="text-xl text-blue-600 font-semibold mb-4">
-          {jobTitle} • {companyName} 지원
-        </p>
+        <h1 className="text-4xl font-bold text-gray-800 mb-2">{resumeData.personalInfo.name}</h1>
+        <p className="text-xl text-blue-600 font-semibold mb-4">{jobTitle}</p>
         <div className="flex flex-wrap gap-4 text-gray-600">
           <div className="flex items-center gap-2">
             <Mail className="w-4 h-4" />
-            <span>{sampleResumeData.personalInfo.email}</span>
+            <span>{resumeData.personalInfo.email}</span>
           </div>
           <div className="flex items-center gap-2">
             <Phone className="w-4 h-4" />
-            <span>{sampleResumeData.personalInfo.phone}</span>
+            <span>{resumeData.personalInfo.phone}</span>
           </div>
           <div className="flex items-center gap-2">
             <MapPin className="w-4 h-4" />
-            <span>{sampleResumeData.personalInfo.address}</span>
+            <span>{resumeData.personalInfo.address}</span>
           </div>
         </div>
       </div>
@@ -128,7 +203,7 @@ const CompanyJobInputForm = () => {
         <h2 className="text-2xl font-bold text-gray-800 mb-3 border-l-4 border-blue-600 pl-3">
           자기소개
         </h2>
-        <p className="text-gray-700 leading-relaxed">{sampleResumeData.summary}</p>
+        <p className="text-gray-700 leading-relaxed">{resumeData.summary}</p>
       </div>
 
       {/* 경력 */}
@@ -136,22 +211,26 @@ const CompanyJobInputForm = () => {
         <h2 className="text-2xl font-bold text-gray-800 mb-3 border-l-4 border-blue-600 pl-3">
           경력사항
         </h2>
-        {sampleResumeData.experience.map((exp, index) => (
-          <div key={index} className="mb-4 p-4 bg-gray-50 rounded-lg">
-            <div className="flex justify-between items-start mb-2">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800">{exp.position}</h3>
-                <p className="text-blue-600 font-medium">{exp.company}</p>
+        {resumeData.experience.length > 0 ? (
+          resumeData.experience.map((exp, index) => (
+            <div key={index} className="mb-4 p-4 bg-gray-50 rounded-lg">
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-800">{exp.position}</h3>
+                  <p className="text-blue-600 font-medium">{exp.company}</p>
+                </div>
+                <span className="text-gray-500 text-sm">{exp.period}</span>
               </div>
-              <span className="text-gray-500 text-sm">{exp.period}</span>
+              <ul className="list-disc list-inside text-gray-700 space-y-1">
+                {exp.description.map((desc, i) => (
+                  <li key={i}>{desc}</li>
+                ))}
+              </ul>
             </div>
-            <ul className="list-disc list-inside text-gray-700 space-y-1">
-              {exp.description.map((desc, i) => (
-                <li key={i}>{desc}</li>
-              ))}
-            </ul>
-          </div>
-        ))}
+          ))
+        ) : (
+          <div className="p-4 bg-gray-50 rounded-lg text-gray-500">경력사항이 없습니다.</div>
+        )}
       </div>
 
       {/* 학력 */}
@@ -159,51 +238,98 @@ const CompanyJobInputForm = () => {
         <h2 className="text-2xl font-bold text-gray-800 mb-3 border-l-4 border-blue-600 pl-3">
           학력사항
         </h2>
-        {sampleResumeData.education.map((edu, index) => (
-          <div key={index} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-            <div>
-              <h3 className="font-semibold text-gray-800">{edu.school}</h3>
-              <p className="text-gray-600">{edu.major}</p>
+        {resumeData.education.length > 0 ? (
+          resumeData.education.map((edu, index) => (
+            <div
+              key={index}
+              className="flex justify-between items-center p-3 bg-gray-50 rounded-lg"
+            >
+              <div>
+                <h3 className="font-semibold text-gray-800">{edu.school}</h3>
+                <p className="text-gray-600">{edu.major}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-gray-500 text-sm">{edu.period}</p>
+                <p className="text-blue-600 font-medium">학점: {edu.grade}</p>
+              </div>
             </div>
-            <div className="text-right">
-              <p className="text-gray-500 text-sm">{edu.period}</p>
-              <p className="text-blue-600 font-medium">학점: {edu.grade}</p>
-            </div>
-          </div>
-        ))}
+          ))
+        ) : (
+          <div className="p-3 bg-gray-50 rounded-lg text-gray-500">학력사항이 없습니다.</div>
+        )}
       </div>
 
-      {/* 기술 스택 */}
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-3 border-l-4 border-blue-600 pl-3">
-          보유 기술
-        </h2>
-        <div className="flex flex-wrap gap-2">
-          {sampleResumeData.skills.map((skill, index) => (
-            <span
-              key={index}
-              className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"
-            >
-              {skill}
-            </span>
+      {/* 프로젝트 */}
+      {resumeData.projects.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-gray-800 mb-3 border-l-4 border-blue-600 pl-3">
+            프로젝트
+          </h2>
+          {resumeData.projects.map((project, index) => (
+            <div key={index} className="mb-4 p-4 bg-gray-50 rounded-lg">
+              <div className="flex justify-between items-start mb-2">
+                <h3 className="text-lg font-semibold text-gray-800">{project.name}</h3>
+                <span className="text-gray-500 text-sm">{project.period}</span>
+              </div>
+              <p className="text-gray-700">{project.description}</p>
+            </div>
           ))}
         </div>
-      </div>
+      )}
+
+      {/* 수상 */}
+      {resumeData.awards.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-gray-800 mb-3 border-l-4 border-blue-600 pl-3">
+            수상
+          </h2>
+          {resumeData.awards.map((award, index) => (
+            <div
+              key={index}
+              className="flex justify-between items-center p-3 bg-gray-50 rounded-lg mb-2"
+            >
+              <div>
+                <h3 className="font-semibold text-gray-800">{award.name}</h3>
+                <p className="text-gray-600">{award.issuer}</p>
+              </div>
+              <span className="text-gray-500 text-sm">{award.date}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 자격증 */}
+      {resumeData.certifications.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold text-gray-800 mb-3 border-l-4 border-blue-600 pl-3">
+            자격증
+          </h2>
+          {resumeData.certifications.map((cert, index) => (
+            <div
+              key={index}
+              className="flex justify-between items-center p-3 bg-gray-50 rounded-lg mb-2"
+            >
+              <div>
+                <h3 className="font-semibold text-gray-800">{cert.name}</h3>
+                <p className="text-gray-600">{cert.issuer}</p>
+              </div>
+              <span className="text-gray-500 text-sm">{cert.date}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 
   const renderClassicResume = () => (
-    <div className="bg-white p-8 max-w-4xl mx-auto font-serif">
+    <div id="resume-content" className="bg-white p-8 max-w-4xl mx-auto font-serif">
       {/* 헤더 */}
       <div className="text-center border-b-2 border-gray-800 pb-4 mb-6">
-        <h1 className="text-3xl font-bold text-gray-800 mb-1">
-          {sampleResumeData.personalInfo.name}
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-800 mb-1">{resumeData.personalInfo.name}</h1>
         <p className="text-lg text-gray-600 mb-2">{jobTitle}</p>
-        <p className="text-sm text-gray-500">{companyName} 지원</p>
         <div className="mt-3 text-sm text-gray-600">
-          {sampleResumeData.personalInfo.email} | {sampleResumeData.personalInfo.phone} |{' '}
-          {sampleResumeData.personalInfo.address}
+          {resumeData.personalInfo.email} | {resumeData.personalInfo.phone} |{' '}
+          {resumeData.personalInfo.address}
         </div>
       </div>
 
@@ -211,7 +337,7 @@ const CompanyJobInputForm = () => {
       <div className="mb-6">
         <h2 className="text-xl font-bold text-gray-800 mb-2 uppercase tracking-wider">Profile</h2>
         <hr className="border-gray-300 mb-3" />
-        <p className="text-gray-700 leading-relaxed text-justify">{sampleResumeData.summary}</p>
+        <p className="text-gray-700 leading-relaxed text-justify">{resumeData.summary}</p>
       </div>
 
       {/* 경력 */}
@@ -220,63 +346,121 @@ const CompanyJobInputForm = () => {
           Experience
         </h2>
         <hr className="border-gray-300 mb-3" />
-        {sampleResumeData.experience.map((exp, index) => (
-          <div key={index} className="mb-4">
-            <div className="flex justify-between items-baseline mb-1">
-              <h3 className="text-lg font-semibold text-gray-800">{exp.position}</h3>
-              <span className="text-gray-500 text-sm italic">{exp.period}</span>
+        {resumeData.experience.length > 0 ? (
+          resumeData.experience.map((exp, index) => (
+            <div key={index} className="mb-4">
+              <div className="flex justify-between items-baseline mb-1">
+                <h3 className="text-lg font-semibold text-gray-800">{exp.position}</h3>
+                <span className="text-gray-500 text-sm italic">{exp.period}</span>
+              </div>
+              <p className="text-gray-600 font-medium mb-2">{exp.company}</p>
+              <ul className="list-disc list-inside text-gray-700 space-y-1 ml-4">
+                {exp.description.map((desc, i) => (
+                  <li key={i} className="text-sm">
+                    {desc}
+                  </li>
+                ))}
+              </ul>
             </div>
-            <p className="text-gray-600 font-medium mb-2">{exp.company}</p>
-            <ul className="list-disc list-inside text-gray-700 space-y-1 ml-4">
-              {exp.description.map((desc, i) => (
-                <li key={i} className="text-sm">
-                  {desc}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
+          ))
+        ) : (
+          <div className="text-gray-500 italic">경력사항이 없습니다.</div>
+        )}
       </div>
 
       {/* 학력 */}
       <div className="mb-6">
         <h2 className="text-xl font-bold text-gray-800 mb-2 uppercase tracking-wider">Education</h2>
         <hr className="border-gray-300 mb-3" />
-        {sampleResumeData.education.map((edu, index) => (
-          <div key={index} className="flex justify-between items-baseline">
-            <div>
-              <h3 className="font-semibold text-gray-800">{edu.school}</h3>
-              <p className="text-gray-600 text-sm">{edu.major}</p>
+        {resumeData.education.length > 0 ? (
+          resumeData.education.map((edu, index) => (
+            <div key={index} className="flex justify-between items-baseline">
+              <div>
+                <h3 className="font-semibold text-gray-800">{edu.school}</h3>
+                <p className="text-gray-600 text-sm">{edu.major}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-gray-500 text-sm italic">{edu.period}</p>
+                <p className="text-gray-600 text-sm">GPA: {edu.grade}</p>
+              </div>
             </div>
-            <div className="text-right">
-              <p className="text-gray-500 text-sm italic">{edu.period}</p>
-              <p className="text-gray-600 text-sm">GPA: {edu.grade}</p>
-            </div>
-          </div>
-        ))}
+          ))
+        ) : (
+          <div className="text-gray-500 italic">학력사항이 없습니다.</div>
+        )}
       </div>
 
-      {/* 기술 */}
-      <div>
-        <h2 className="text-xl font-bold text-gray-800 mb-2 uppercase tracking-wider">Skills</h2>
-        <hr className="border-gray-300 mb-3" />
-        <p className="text-gray-700">{sampleResumeData.skills.join(' • ')}</p>
-      </div>
+      {/* 프로젝트 */}
+      {resumeData.projects.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-2 uppercase tracking-wider">
+            Projects
+          </h2>
+          <hr className="border-gray-300 mb-3" />
+          {resumeData.projects.map((project, index) => (
+            <div key={index} className="mb-4">
+              <div className="flex justify-between items-baseline mb-1">
+                <h3 className="text-lg font-semibold text-gray-800">{project.name}</h3>
+                <span className="text-gray-500 text-sm italic">{project.period}</span>
+              </div>
+              <p className="text-gray-700 text-sm">{project.description}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 수상 */}
+      {resumeData.awards.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-2 uppercase tracking-wider">Awards</h2>
+          <hr className="border-gray-300 mb-3" />
+          {resumeData.awards.map((award, index) => (
+            <div key={index} className="flex justify-between items-baseline mb-2">
+              <div>
+                <h3 className="font-semibold text-gray-800">{award.name}</h3>
+                <p className="text-gray-600 text-sm">{award.issuer}</p>
+              </div>
+              <span className="text-gray-500 text-sm italic">{award.date}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 자격증 */}
+      {resumeData.certifications.length > 0 && (
+        <div>
+          <h2 className="text-xl font-bold text-gray-800 mb-2 uppercase tracking-wider">
+            Certifications
+          </h2>
+          <hr className="border-gray-300 mb-3" />
+          {resumeData.certifications.map((cert, index) => (
+            <div key={index} className="flex justify-between items-baseline mb-2">
+              <div>
+                <h3 className="font-semibold text-gray-800">{cert.name}</h3>
+                <p className="text-gray-600 text-sm">{cert.issuer}</p>
+              </div>
+              <span className="text-gray-500 text-sm italic">{cert.date}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 
   const renderCreativeResume = () => (
-    <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-8 max-w-4xl mx-auto">
+    <div
+      id="resume-content"
+      className="bg-gradient-to-br from-purple-50 to-pink-50 p-8 max-w-4xl mx-auto"
+    >
       {/* 헤더 */}
       <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white p-6 rounded-2xl mb-6 transform -rotate-1">
         <div className="transform rotate-1">
-          <h1 className="text-4xl font-bold mb-2">{sampleResumeData.personalInfo.name}</h1>
+          <h1 className="text-4xl font-bold mb-2">{resumeData.personalInfo.name}</h1>
           <p className="text-xl mb-1">{jobTitle}</p>
-          <p className="text-purple-200">{companyName}에서 함께 성장하고 싶습니다!</p>
           <div className="mt-4 flex flex-wrap gap-4 text-sm">
-            <span>📧 {sampleResumeData.personalInfo.email}</span>
-            <span>📱 {sampleResumeData.personalInfo.phone}</span>
-            <span>📍 {sampleResumeData.personalInfo.address}</span>
+            <span>📧 {resumeData.personalInfo.email}</span>
+            <span>📱 {resumeData.personalInfo.phone}</span>
+            <span>📍 {resumeData.personalInfo.address}</span>
           </div>
         </div>
       </div>
@@ -288,7 +472,7 @@ const CompanyJobInputForm = () => {
             <User className="w-6 h-6" />
             About Me
           </h2>
-          <p className="text-gray-700 leading-relaxed">{sampleResumeData.summary}</p>
+          <p className="text-gray-700 leading-relaxed">{resumeData.summary}</p>
         </div>
       </div>
 
@@ -299,62 +483,128 @@ const CompanyJobInputForm = () => {
           Work Experience
         </h2>
         <div className="space-y-4">
-          {sampleResumeData.experience.map((exp, index) => (
-            <div
-              key={index}
-              className="bg-white rounded-xl p-6 shadow-lg transform hover:scale-105 transition-transform"
-            >
-              <div className="flex justify-between items-start mb-3">
-                <div>
-                  <h3 className="text-xl font-bold text-gray-800">{exp.position}</h3>
-                  <p className="text-purple-600 font-semibold">{exp.company}</p>
+          {resumeData.experience.length > 0 ? (
+            resumeData.experience.map((exp, index) => (
+              <div
+                key={index}
+                className="bg-white rounded-xl p-6 shadow-lg transform hover:scale-105 transition-transform"
+              >
+                <div className="flex justify-between items-start mb-3">
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-800">{exp.position}</h3>
+                    <p className="text-purple-600 font-semibold">{exp.company}</p>
+                  </div>
+                  <div className="bg-gradient-to-r from-purple-100 to-pink-100 px-3 py-1 rounded-full">
+                    <span className="text-purple-700 text-sm font-medium">{exp.period}</span>
+                  </div>
                 </div>
-                <div className="bg-gradient-to-r from-purple-100 to-pink-100 px-3 py-1 rounded-full">
-                  <span className="text-purple-700 text-sm font-medium">{exp.period}</span>
-                </div>
+                <ul className="space-y-2">
+                  {exp.description.map((desc, i) => (
+                    <li key={i} className="flex items-start gap-2 text-gray-700">
+                      <span className="text-purple-500 mt-1">✨</span>
+                      {desc}
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <ul className="space-y-2">
-                {exp.description.map((desc, i) => (
-                  <li key={i} className="flex items-start gap-2 text-gray-700">
-                    <span className="text-purple-500 mt-1">✨</span>
-                    {desc}
-                  </li>
-                ))}
-              </ul>
+            ))
+          ) : (
+            <div className="bg-white rounded-xl p-6 shadow-lg text-gray-500 text-center">
+              경력사항이 없습니다.
             </div>
-          ))}
+          )}
         </div>
       </div>
 
-      {/* 학력 & 기술 */}
-      <div className="grid md:grid-cols-2 gap-6">
+      {/* 학력 */}
+      <div className="mt-6">
         <div className="bg-white rounded-xl p-6 shadow-lg">
           <h2 className="text-xl font-bold text-purple-700 mb-4">🎓 Education</h2>
-          {sampleResumeData.education.map((edu, index) => (
-            <div key={index} className="border-l-4 border-purple-300 pl-4">
-              <h3 className="font-bold text-gray-800">{edu.school}</h3>
-              <p className="text-gray-600">{edu.major}</p>
-              <p className="text-sm text-purple-600">
-                {edu.period} | {edu.grade}
-              </p>
-            </div>
-          ))}
+          {resumeData.education.length > 0 ? (
+            resumeData.education.map((edu, index) => (
+              <div key={index} className="border-l-4 border-purple-300 pl-4">
+                <h3 className="font-bold text-gray-800">{edu.school}</h3>
+                <p className="text-gray-600">{edu.major}</p>
+                <p className="text-sm text-purple-600">
+                  {edu.period} | {edu.grade}
+                </p>
+              </div>
+            ))
+          ) : (
+            <div className="text-gray-500 text-center">학력사항이 없습니다.</div>
+          )}
         </div>
+      </div>
 
-        <div className="bg-white rounded-xl p-6 shadow-lg">
-          <h2 className="text-xl font-bold text-purple-700 mb-4">🚀 Skills</h2>
-          <div className="flex flex-wrap gap-2">
-            {sampleResumeData.skills.map((skill, index) => (
-              <span
+      {/* 프로젝트 */}
+      {resumeData.projects.length > 0 && (
+        <div className="mt-6">
+          <h2 className="text-2xl font-bold text-purple-700 mb-4 flex items-center gap-2">
+            <Building2 className="w-6 h-6" />
+            Projects
+          </h2>
+          <div className="space-y-4">
+            {resumeData.projects.map((project, index) => (
+              <div
                 key={index}
-                className="px-3 py-1 bg-gradient-to-r from-purple-200 to-pink-200 text-purple-800 rounded-full text-sm font-medium"
+                className="bg-white rounded-xl p-6 shadow-lg transform hover:scale-105 transition-transform"
               >
-                {skill}
-              </span>
+                <div className="flex justify-between items-start mb-3">
+                  <h3 className="text-xl font-bold text-gray-800">{project.name}</h3>
+                  <div className="bg-gradient-to-r from-purple-100 to-pink-100 px-3 py-1 rounded-full">
+                    <span className="text-purple-700 text-sm font-medium">{project.period}</span>
+                  </div>
+                </div>
+                <p className="text-gray-700">{project.description}</p>
+              </div>
             ))}
           </div>
         </div>
-      </div>
+      )}
+
+      {/* 수상 */}
+      {resumeData.awards.length > 0 && (
+        <div className="mt-6">
+          <h2 className="text-2xl font-bold text-purple-700 mb-4 flex items-center gap-2">
+            <Trophy className="w-6 h-6" />
+            Awards
+          </h2>
+          <div className="grid md:grid-cols-2 gap-4">
+            {resumeData.awards.map((award, index) => (
+              <div
+                key={index}
+                className="bg-white rounded-xl p-4 shadow-lg border-l-4 border-purple-300"
+              >
+                <h3 className="font-bold text-gray-800">{award.name}</h3>
+                <p className="text-gray-600 text-sm">{award.issuer}</p>
+                <p className="text-sm text-purple-600">{award.date}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* 자격증 */}
+      {resumeData.certifications.length > 0 && (
+        <div className="mt-6">
+          <h2 className="text-2xl font-bold text-purple-700 mb-4 flex items-center gap-2">
+            <User className="w-6 h-6" />
+            Certifications
+          </h2>
+          <div className="grid md:grid-cols-2 gap-4">
+            {resumeData.certifications.map((cert, index) => (
+              <div
+                key={index}
+                className="bg-white rounded-xl p-4 shadow-lg border-l-4 border-purple-300"
+              >
+                <h3 className="font-bold text-gray-800">{cert.name}</h3>
+                <p className="text-gray-600 text-sm">{cert.issuer}</p>
+                <p className="text-sm text-purple-600">{cert.date}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 
@@ -430,7 +680,13 @@ const CompanyJobInputForm = () => {
             >
               ← 다른 스타일 선택
             </button>
-            <button className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition-colors">
+            <button
+              // onClick={downloadPDF}
+              onClick={() => {
+                downloadPDF();
+              }}
+              className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition-colors"
+            >
               <Download className="w-4 h-4 inline mr-2" />
               PDF 다운로드
             </button>
